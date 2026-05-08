@@ -50,6 +50,9 @@ __pycache__
 *.pyc
 *cache*
 
+# Husky
+.husky/_
+
 # Test/dev directories (local testing)
 e2e-output/
 parsed_dataset/
