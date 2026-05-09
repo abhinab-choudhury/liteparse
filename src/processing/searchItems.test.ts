@@ -99,4 +99,31 @@ describe("searchItems", () => {
     expect(results[0].y).toBe(50);
     expect(results[0].height).toBe(27); // 65 + 12 - 50
   });
+
+  it("preserves url from matched items when all share the same url", () => {
+    const items = [
+      { text: "Click ", x: 10, y: 50, width: 40, height: 12, fontSize: 12, url: "https://example.com" },
+      { text: "here", x: 50, y: 50, width: 30, height: 12, fontSize: 12, url: "https://example.com" },
+    ];
+    const results = searchItems(items, { phrase: "Click here" });
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBe("https://example.com");
+  });
+
+  it("omits url when matched items have different urls", () => {
+    const items = [
+      { text: "Click ", x: 10, y: 50, width: 40, height: 12, fontSize: 12, url: "https://a.com" },
+      { text: "here", x: 50, y: 50, width: 30, height: 12, fontSize: 12, url: "https://b.com" },
+    ];
+    const results = searchItems(items, { phrase: "Click here" });
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBeUndefined();
+  });
+
+  it("omits url when matched items have no url", () => {
+    const items = [item("hello world", 10, 20, 100)];
+    const results = searchItems(items, { phrase: "hello world" });
+    expect(results).toHaveLength(1);
+    expect(results[0].url).toBeUndefined();
+  });
 });

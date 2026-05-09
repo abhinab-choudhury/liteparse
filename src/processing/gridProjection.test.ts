@@ -330,6 +330,94 @@ describe("test projectToGrid", () => {
     expect(result).toStrictEqual(expectedOutput);
   });
 
+  it("test URL formatting in text output", () => {
+    const config = { ...DEFAULT_CONFIG, preserveLayoutAlignmentAcrossPages: false };
+    const page = {
+      pageNum: 1,
+      width: 612,
+      height: 792,
+      textItems: [],
+      images: [],
+    };
+    const projectionBoxes = [
+      { str: "Click here", x: 10, y: 100, w: 80, h: 12, r: 0, strLength: 10, url: "https://example.com" },
+    ];
+    const prevAnchors = { forwardAnchorLeft: {}, forwardAnchorRight: {}, forwardAnchorCenter: {} };
+    const totalPages = 1;
+    const expectedOutput = {
+      text: " [Click here](https://example.com)",
+      prevAnchors: {
+        forwardAnchorLeft: {},
+        forwardAnchorRight: {},
+        forwardAnchorCenter: {},
+      },
+    };
+    const result = projectToGrid(
+      config,
+      page,
+      projectionBoxes,
+      prevAnchors,
+      totalPages,
+      NOOP_LOGGER
+    );
+    expect(result).toStrictEqual(expectedOutput);
+  });
+
+  it("test canMergeUrl prevents merging different URLs", () => {
+    const config = { ...DEFAULT_CONFIG, preserveLayoutAlignmentAcrossPages: false };
+    const page = {
+      pageNum: 1,
+      width: 612,
+      height: 792,
+      textItems: [],
+      images: [],
+    };
+    const projectionBoxes = [
+      { str: "Link A", x: 10, y: 100, w: 50, h: 12, r: 0, strLength: 6, url: "https://a.com" },
+      { str: "Link B", x: 60, y: 100, w: 50, h: 12, r: 0, strLength: 6, url: "https://b.com" },
+    ];
+    const prevAnchors = { forwardAnchorLeft: {}, forwardAnchorRight: {}, forwardAnchorCenter: {} };
+    const totalPages = 1;
+    const result = projectToGrid(
+      config,
+      page,
+      projectionBoxes,
+      prevAnchors,
+      totalPages,
+      NOOP_LOGGER
+    );
+    // Different URLs should NOT be merged into one link
+    // They appear adjacent because gap=0 (spatially adjacent)
+    expect(result.text).toBe(" [Link A](https://a.com)[Link B](https://b.com)");
+  });
+
+  it("test canMergeUrl merges same URL items", () => {
+    const config = { ...DEFAULT_CONFIG, preserveLayoutAlignmentAcrossPages: false };
+    const page = {
+      pageNum: 1,
+      width: 612,
+      height: 792,
+      textItems: [],
+      images: [],
+    };
+    const projectionBoxes = [
+      { str: "Click ", x: 10, y: 100, w: 40, h: 12, r: 0, strLength: 6, url: "https://example.com" },
+      { str: "here", x: 50, y: 100, w: 30, h: 12, r: 0, strLength: 4, url: "https://example.com" },
+    ];
+    const prevAnchors = { forwardAnchorLeft: {}, forwardAnchorRight: {}, forwardAnchorCenter: {} };
+    const totalPages = 1;
+    const result = projectToGrid(
+      config,
+      page,
+      projectionBoxes,
+      prevAnchors,
+      totalPages,
+      NOOP_LOGGER
+    );
+    // Same URL items should merge into one [text](url)
+    expect(result.text).toBe(" [Click here](https://example.com)");
+  });
+
   it("test dot-garbage filtering", () => {
     const config = { ...DEFAULT_CONFIG, preserveLayoutAlignmentAcrossPages: false };
     const page = {

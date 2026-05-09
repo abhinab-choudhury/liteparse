@@ -67,4 +67,17 @@ describe("test text utilites", () => {
     const result = formatPageText(pages[0]);
     expect(result).toBe(pages[0].text);
   });
+
+  it("renders markdown-style URLs in text output", () => {
+    const pageWithUrl = {
+      pageNum: 1,
+      width: 612,
+      height: 792,
+      text: " [Click here](https://example.com)\nMore text",
+      textItems: [],
+    };
+    const result = formatPageText(pageWithUrl);
+    expect(result).toBe(" [Click here](https://example.com)\nMore text");
+    expect(result).toContain("[Click here](https://example.com)");
+  });
 });
