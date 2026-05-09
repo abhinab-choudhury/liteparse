@@ -102,8 +102,24 @@ describe("searchItems", () => {
 
   it("preserves url from matched items when all share the same url", () => {
     const items = [
-      { text: "Click ", x: 10, y: 50, width: 40, height: 12, fontSize: 12, url: "https://example.com" },
-      { text: "here", x: 50, y: 50, width: 30, height: 12, fontSize: 12, url: "https://example.com" },
+      {
+        text: "Click ",
+        x: 10,
+        y: 50,
+        width: 40,
+        height: 12,
+        fontSize: 12,
+        url: "https://example.com",
+      },
+      {
+        text: "here",
+        x: 50,
+        y: 50,
+        width: 30,
+        height: 12,
+        fontSize: 12,
+        url: "https://example.com",
+      },
     ];
     const results = searchItems(items, { phrase: "Click here" });
     expect(results).toHaveLength(1);

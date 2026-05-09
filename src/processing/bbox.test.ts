@@ -338,7 +338,16 @@ describe("test buildBox", () => {
       width: 612,
       height: 792,
       textItems: [
-        { str: "Link text", x: 50, y: 100, width: 80, height: 12, w: 80, h: 12, url: "https://example.com" },
+        {
+          str: "Link text",
+          x: 50,
+          y: 100,
+          width: 80,
+          height: 12,
+          w: 80,
+          h: 12,
+          url: "https://example.com",
+        },
         { str: "No link", x: 50, y: 120, width: 60, height: 12, w: 60, h: 12 },
       ],
       images: [],

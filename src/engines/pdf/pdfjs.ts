@@ -28,7 +28,6 @@ interface PdfJsPage {
   cleanup(): Promise<void>;
 }
 
-
 /** PDF.js viewport type */
 interface PdfJsViewport {
   width: number;
@@ -149,7 +148,15 @@ function getOverlapArea(
  * Assigns the url property to matching text items.
  */
 function applyLinkAnnotationsToTextItems(
-  textItems: Array<{ x: number; y: number; w?: number; h?: number; width?: number; height?: number; url?: string }>,
+  textItems: Array<{
+    x: number;
+    y: number;
+    w?: number;
+    h?: number;
+    width?: number;
+    height?: number;
+    url?: string;
+  }>,
   annotations: Annotation[],
   viewportTransform: number[]
 ): void {
@@ -183,7 +190,6 @@ function applyLinkAnnotationsToTextItems(
     }
   }
 }
-
 
 // Pre-compiled regex patterns for string decoding
 const BUGGY_FONT_MARKER_CHECK = ":->|>";
@@ -929,15 +935,15 @@ export class PdfJsEngine implements PdfEngine {
     try {
       const pdfAnnotations = await page.getAnnotations();
       annotations = pdfAnnotations
-        .filter((a:Annotation) => a.subtype === "Link")
-        .map((a:Annotation) => ({
+        .filter((a: Annotation) => a.subtype === "Link")
+        .map((a: Annotation) => ({
           type: "Link",
           subtype: a.subtype,
           url: a.url,
           rect: a.rect,
         }));
 
-      if(annotations.length > 0) {
+      if (annotations.length > 0) {
         applyLinkAnnotationsToTextItems(textItems, annotations, viewportTransform);
       }
     } catch {

@@ -340,7 +340,16 @@ describe("test projectToGrid", () => {
       images: [],
     };
     const projectionBoxes = [
-      { str: "Click here", x: 10, y: 100, w: 80, h: 12, r: 0, strLength: 10, url: "https://example.com" },
+      {
+        str: "Click here",
+        x: 10,
+        y: 100,
+        w: 80,
+        h: 12,
+        r: 0,
+        strLength: 10,
+        url: "https://example.com",
+      },
     ];
     const prevAnchors = { forwardAnchorLeft: {}, forwardAnchorRight: {}, forwardAnchorCenter: {} };
     const totalPages = 1;
@@ -401,7 +410,16 @@ describe("test projectToGrid", () => {
       images: [],
     };
     const projectionBoxes = [
-      { str: "Click ", x: 10, y: 100, w: 40, h: 12, r: 0, strLength: 6, url: "https://example.com" },
+      {
+        str: "Click ",
+        x: 10,
+        y: 100,
+        w: 40,
+        h: 12,
+        r: 0,
+        strLength: 6,
+        url: "https://example.com",
+      },
       { str: "here", x: 50, y: 100, w: 30, h: 12, r: 0, strLength: 4, url: "https://example.com" },
     ];
     const prevAnchors = { forwardAnchorLeft: {}, forwardAnchorRight: {}, forwardAnchorCenter: {} };

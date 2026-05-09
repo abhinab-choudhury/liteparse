@@ -232,7 +232,7 @@ export interface ProjectionTextBox {
   vgap?: boolean;
   isPlaceholder?: boolean;
   fromOCR?: boolean;
-  
+
   // Projection metadata
   snap?: "left" | "right" | "center";
   leftAnchor?: string;

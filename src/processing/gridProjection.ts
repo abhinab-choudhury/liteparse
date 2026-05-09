@@ -2151,12 +2151,12 @@ export function projectToGrid(
           if (
             targetX >
             rawLines[currentCenterSnapBox.lineIndex].length +
-            Math.round(currentCenterSnapBox.bbox.strLength / 2)
+              Math.round(currentCenterSnapBox.bbox.strLength / 2)
           ) {
             rawLines[currentCenterSnapBox.lineIndex] += " ".repeat(
               targetX -
-              rawLines[currentCenterSnapBox.lineIndex].length -
-              Math.round(currentCenterSnapBox.bbox.strLength / 2)
+                rawLines[currentCenterSnapBox.lineIndex].length -
+                Math.round(currentCenterSnapBox.bbox.strLength / 2)
             );
           }
           rawLines[currentCenterSnapBox.lineIndex] += currentCenterSnapBox.bbox.str;

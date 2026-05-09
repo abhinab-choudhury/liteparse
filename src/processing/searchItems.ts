@@ -71,7 +71,9 @@ export function searchItems(items: JsonTextItem[], options: SearchItemsOptions):
         const x2 = Math.max(...matched.map((m) => m.x + m.width));
         const y2 = Math.max(...matched.map((m) => m.y + m.height));
 
-        const sharedUrl = matched.every((m) => m.url === matched[0].url) ? matched[0].url : undefined;
+        const sharedUrl = matched.every((m) => m.url === matched[0].url)
+          ? matched[0].url
+          : undefined;
         results.push({
           text: options.phrase,
           x,
