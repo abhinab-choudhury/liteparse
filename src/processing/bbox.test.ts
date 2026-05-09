@@ -331,6 +331,34 @@ describe("test buildBox", () => {
     const result = buildBbox(pageData, config);
     expect(result).toStrictEqual(expectedOutput);
   });
+
+  it("propagates url from TextItem to ProjectionTextBox", () => {
+    const pageData = {
+      pageNum: 1,
+      width: 612,
+      height: 792,
+      textItems: [
+        {
+          str: "Link text",
+          x: 50,
+          y: 100,
+          width: 80,
+          height: 12,
+          w: 80,
+          h: 12,
+          url: "https://example.com",
+        },
+        { str: "No link", x: 50, y: 120, width: 60, height: 12, w: 60, h: 12 },
+      ],
+      images: [],
+    };
+    const config: LiteParseConfig = { ...DEFAULT_CONFIG, ocrEnabled: false };
+
+    const result = buildBbox(pageData, config);
+
+    expect(result[0].url).toBe("https://example.com");
+    expect(result[1].url).toBeUndefined();
+  });
 });
 
 describe("test buildBoundingBoxes", () => {

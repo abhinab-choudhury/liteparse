@@ -826,6 +826,16 @@ export function bboxToLine(
     return false;
   }
 
+  function canMergeUrl(previousBbox: ProjectionTextBox, bbox: ProjectionTextBox): boolean {
+    if (!previousBbox.url && !bbox.url) {
+      return true;
+    }
+    if (previousBbox.url && bbox.url && previousBbox.url === bbox.url) {
+      return true;
+    }
+    return false;
+  }
+
   function canMerge(previousBbox: ProjectionTextBox, bbox: ProjectionTextBox): boolean {
     if (bbox.y == previousBbox.y && bbox.h == previousBbox.h) {
       // Use raw pageBbox width for sub-pixel accurate gap calculation.
@@ -839,7 +849,8 @@ export function bboxToLine(
       const xDelta = bbox.x - previousBbox.x - prevRawWidth;
       if (
         ((xDelta < 0 && xDelta > -1.0) || (xDelta >= 0 && xDelta < 0.1)) &&
-        canMergeMarkup(previousBbox, bbox)
+        canMergeMarkup(previousBbox, bbox) &&
+        canMergeUrl(previousBbox, bbox)
       ) {
         return true;
       }
@@ -967,7 +978,7 @@ export function bboxToLine(
       // if (line[i].h == line[i-1].h) {
       const currentLine = line[i];
       const previousLine = line[i - 1];
-      if (canMergeMarkup(previousLine, currentLine)) {
+      if (canMergeMarkup(previousLine, currentLine) && canMergeUrl(previousLine, currentLine)) {
         // Don't merge adjacent numbers in tables - they're separate columns
         const bothAreNumbers =
           looksLikeTableNumber(previousLine.str) && looksLikeTableNumber(currentLine.str);
@@ -1432,6 +1443,7 @@ export function projectToGrid(
       h: bbox.h,
       r: bbox.r,
       strLength: bbox.str.length,
+      url: bbox.url,
     });
   }
 
@@ -1443,7 +1455,7 @@ export function projectToGrid(
     logger.logLineComposition(i, lines[i]);
   }
 
-  // remove unprojectable text and apply markup to final lines
+  // remove unprojectable text and apply markup/links  to final lines
   for (let i = 0; i < lines.length; ++i) {
     const line = filterUnprojectableText(config, lines[i]);
     for (const bbox of line) {
@@ -1454,6 +1466,11 @@ export function projectToGrid(
       // mitigated since we skip markup entirely when we are not outputting markdown
       if (bbox.str.trim().length != 0 && bbox.markup) {
         bbox.str = applyMarkupTags(bbox.markup, bbox.str);
+      }
+
+      // Apply markdown-style link formatting: [test](url)
+      if (bbox.str.trim().length != 0 && bbox.url) {
+        bbox.str = `[${bbox.str}](${bbox.url})`;
       }
     }
     lines[i] = line;

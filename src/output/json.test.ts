@@ -210,4 +210,18 @@ describe("confidence field", () => {
     const item = result.pages[0].textItems[0];
     expect(item.confidence).toBe(1.0);
   });
+
+  it("includes url in JSON output when present", () => {
+    const itemWithUrl = { ...nativeTextItem, url: "https://example.com" };
+    const page = { ...mixedPage, textItems: [itemWithUrl] };
+    const result = buildJSON([page]);
+    const item = result.pages[0].textItems[0];
+    expect(item.url).toBe("https://example.com");
+  });
+
+  it("omits url from JSON output when not present", () => {
+    const result = buildJSON([mixedPage]);
+    const item = result.pages[0].textItems[0];
+    expect(item.url).toBeUndefined();
+  });
 });

@@ -84,9 +84,19 @@ function getTestData() {
       },
     ],
   };
+  const mockAnnotations = [
+    {
+      type: "Link",
+      subtype: "Link",
+      url: "https://example.com",
+      rect: [48, 688, 160, 712],
+    },
+  ];
+
   const mockPage = {
     getViewport: vi.fn().mockReturnValue(mockViewport),
     getTextContent: vi.fn().mockResolvedValue(mockTextContent),
+    getAnnotations: vi.fn().mockResolvedValue(mockAnnotations),
     cleanup: vi.fn(async () => {}),
   };
   const mockDocument = {
@@ -118,6 +128,7 @@ function getExpectedResults() {
       fontName: "Helvetica",
       fontSize: 12,
       confidence: 1.0,
+      url: "https://example.com",
     },
     {
       str: "Second line of text",
@@ -157,7 +168,8 @@ describe("test PdfJS methods", () => {
     expect(result.width).toBe(612);
     expect(result.height).toBe(792);
     expect(result.images.length).toBe(0);
-    expect(result.annotations?.length).toBe(0);
+    expect(result.annotations?.length).toBe(1);
+    expect(result.annotations![0].url).toBe("https://example.com");
     expect(result.textItems).toStrictEqual(expectedTextItems);
     expect(result.garbledTextRegions).toBeUndefined();
   });
@@ -175,7 +187,8 @@ describe("test PdfJS methods", () => {
       expect(result.width).toBe(612);
       expect(result.height).toBe(792);
       expect(result.images.length).toBe(0);
-      expect(result.annotations?.length).toBe(0);
+      expect(result.annotations?.length).toBe(1);
+      expect(result.annotations![0].url).toBe("https://example.com");
       expect(result.textItems).toStrictEqual(expectedTextItems);
       expect(result.garbledTextRegions).toBeUndefined();
       counter++;
@@ -195,7 +208,8 @@ describe("test PdfJS methods", () => {
       expect(result.width).toBe(612);
       expect(result.height).toBe(792);
       expect(result.images.length).toBe(0);
-      expect(result.annotations?.length).toBe(0);
+      expect(result.annotations?.length).toBe(1);
+      expect(result.annotations![0].url).toBe("https://example.com");
       expect(result.textItems).toStrictEqual(expectedTextItems);
       expect(result.garbledTextRegions).toBeUndefined();
       counter++;
@@ -215,7 +229,8 @@ describe("test PdfJS methods", () => {
       expect(results[i].width).toBe(612);
       expect(results[i].height).toBe(792);
       expect(results[i].images.length).toBe(0);
-      expect(results[i].annotations?.length).toBe(0);
+      expect(results[i].annotations?.length).toBe(1);
+      expect(results[i].annotations![0].url).toBe("https://example.com");
       expect(results[i].textItems).toStrictEqual(expectedTextItems);
       expect(results[i].garbledTextRegions).toBeUndefined();
     }
@@ -234,10 +249,30 @@ describe("test PdfJS methods", () => {
       expect(results[i].width).toBe(612);
       expect(results[i].height).toBe(792);
       expect(results[i].images.length).toBe(0);
-      expect(results[i].annotations?.length).toBe(0);
+      expect(results[i].annotations?.length).toBe(1);
+      expect(results[i].annotations![0].url).toBe("https://example.com");
       expect(results[i].textItems).toStrictEqual(expectedTextItems);
       expect(results[i].garbledTextRegions).toBeUndefined();
     }
+  });
+
+  it("test extractPage with link annotations", async () => {
+    const doc = getTestData();
+    const engine = new PdfJsEngine();
+    const result = await engine.extractPage(doc, 1);
+
+    // "Hello, World!" at (50,700) overlaps with annotation rect [48,688,160,712]
+    const linkedItem = result.textItems.find((t) => t.str === "Hello, World!");
+    expect(linkedItem?.url).toBe("https://example.com");
+
+    // "Second line of text" at (50,680) has no annotation overlap
+    const nonLinkedItem = result.textItems.find((t) => t.str === "Second line of text");
+    expect(nonLinkedItem?.url).toBeUndefined();
+
+    // Annotations should be populated in the result
+    expect(result.annotations).toBeDefined();
+    expect(result.annotations!.length).toBe(1);
+    expect(result.annotations![0].url).toBe("https://example.com");
   });
 
   it("test renderPageImage", async () => {
