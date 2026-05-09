@@ -1,3 +1,4 @@
+import fs from "fs/promises";
 import pLimit from "p-limit";
 import {
   LiteParseConfig,
@@ -126,15 +127,26 @@ export class LiteParse {
         log(`Converted ${conversionResult.originalExtension} to PDF`);
       }
 
-      doc = await this.pdfEngine.loadDocument(pdfPath, this.config.password);
+      let pdfBytes: string | Uint8Array = pdfPath;
+      if (this.config.rotate) {
+        pdfBytes = await this.applyRotation(
+          new Uint8Array(await fs.readFile(pdfPath)),
+          this.config.rotate
+        );
+      }
+      doc = await this.pdfEngine.loadDocument(pdfBytes, this.config.password);
     } else {
       log(`Processing buffer input (${input.byteLength} bytes)`);
       const ext = await guessExtensionFromBuffer(input);
 
       if (ext === ".pdf") {
         // Zero-disk path: pass bytes directly to the PDF engine
-        const data = input instanceof Uint8Array ? input : new Uint8Array(input);
-        doc = await this.pdfEngine.loadDocument(data, this.config.password);
+        let pdfBytes: string | Uint8Array =
+          input instanceof Uint8Array ? input : new Uint8Array(input);
+        if (this.config.rotate) {
+          pdfBytes = await this.applyRotation(pdfBytes as Uint8Array, this.config.rotate);
+        }
+        doc = await this.pdfEngine.loadDocument(pdfBytes, this.config.password);
       } else {
         // Non-PDF buffer: write to temp file for conversion
         const conversionResult = await convertBufferToPdf(input, this.config.password);
@@ -151,7 +163,14 @@ export class LiteParse {
         needsCleanup = true;
         cleanupPath = conversionResult.pdfPath;
         log(`Converted ${conversionResult.originalExtension} buffer to PDF`);
-        doc = await this.pdfEngine.loadDocument(conversionResult.pdfPath, this.config.password);
+        let pdfBytes: string | Uint8Array = conversionResult.pdfPath;
+        if (this.config.rotate) {
+          pdfBytes = await this.applyRotation(
+            new Uint8Array(await fs.readFile(conversionResult.pdfPath)),
+            this.config.rotate
+          );
+        }
+        doc = await this.pdfEngine.loadDocument(pdfBytes, this.config.password);
       }
     }
 
@@ -266,15 +285,26 @@ export class LiteParse {
         log(`Converted ${conversionResult.originalExtension} to PDF`);
       }
 
-      doc = await this.pdfEngine.loadDocument(pdfPath, this.config.password);
-      pdfInput = pdfPath;
+      let pdfBytes: string | Uint8Array = pdfPath;
+      if (this.config.rotate) {
+        pdfBytes = await this.applyRotation(
+          new Uint8Array(await fs.readFile(pdfPath)),
+          this.config.rotate
+        );
+      }
+      doc = await this.pdfEngine.loadDocument(pdfBytes, this.config.password);
+      pdfInput = pdfBytes;
     } else {
       const ext = await guessExtensionFromBuffer(input);
 
       if (ext === ".pdf") {
-        const data = input instanceof Uint8Array ? input : new Uint8Array(input);
-        doc = await this.pdfEngine.loadDocument(data, this.config.password);
-        pdfInput = data;
+        let pdfBytes: string | Uint8Array =
+          input instanceof Uint8Array ? input : new Uint8Array(input);
+        if (this.config.rotate) {
+          pdfBytes = await this.applyRotation(pdfBytes as Uint8Array, this.config.rotate);
+        }
+        doc = await this.pdfEngine.loadDocument(pdfBytes, this.config.password);
+        pdfInput = pdfBytes;
       } else {
         const conversionResult = await convertBufferToPdf(input, this.config.password);
 
@@ -289,8 +319,15 @@ export class LiteParse {
         needsCleanup = true;
         cleanupPath = conversionResult.pdfPath;
         log(`Converted ${conversionResult.originalExtension} buffer to PDF`);
-        doc = await this.pdfEngine.loadDocument(conversionResult.pdfPath, this.config.password);
-        pdfInput = conversionResult.pdfPath;
+        let pdfBytes: string | Uint8Array = conversionResult.pdfPath;
+        if (this.config.rotate) {
+          pdfBytes = await this.applyRotation(
+            new Uint8Array(await fs.readFile(conversionResult.pdfPath)),
+            this.config.rotate
+          );
+        }
+        doc = await this.pdfEngine.loadDocument(pdfBytes, this.config.password);
+        pdfInput = pdfBytes;
       }
     }
 
@@ -482,6 +519,20 @@ export class LiteParse {
     } catch (error) {
       log(`  OCR failed for page ${page.pageNum}: ${error}`);
     }
+  }
+
+  /**
+   * Rotate all pages of a PDF document by the given degrees using pdf-lib.
+   * Rotation is applied at the document level before any text extraction or OCR.
+   */
+  private async applyRotation(pdfBytes: Uint8Array, degrees: number): Promise<Uint8Array> {
+    const { PDFDocument, degrees: pdfDegrees } = await import("pdf-lib");
+    const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+    const pages = pdfDoc.getPages();
+    for (const page of pages) {
+      page.setRotation(pdfDegrees(degrees));
+    }
+    return pdfDoc.save();
   }
 
   /**

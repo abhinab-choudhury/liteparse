@@ -140,6 +140,15 @@ export interface LiteParseConfig {
   password?: string;
 
   /**
+   * Rotate all pages by the given number of degrees before processing.
+   * Must be one of: 0, 90, 180, 270. Rotation is applied at the PDF document
+   * level using pdf-lib before text extraction and OCR.
+   *
+   * @defaultValue `undefined` (no rotation)
+   */
+  rotate?: number;
+
+  /**
    * Debug configuration for grid projection. When enabled, logs detailed
    * information about how text elements are snapped, anchored, and projected.
    * Can also generate visual PNG overlays of the projection.

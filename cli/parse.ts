@@ -25,6 +25,7 @@ interface ParseCommandOptions {
   maxPages?: string;
   targetPages?: string;
   dpi?: string;
+  rotate?: string;
   preciseBbox?: boolean;
   preserveSmallText?: boolean;
   password?: string;
@@ -57,6 +58,7 @@ interface BatchParseCommandOptions {
   numWorkers?: string;
   maxPages?: string;
   dpi?: string;
+  rotate?: string;
   preciseBbox?: boolean;
   recursive?: boolean;
   extension?: string;
@@ -89,6 +91,7 @@ program
   .option("--dpi <dpi>", "DPI for rendering", DEFAULT_DPI.toString())
   .option("--no-precise-bbox", "Disable precise bounding boxes")
   .option("--preserve-small-text", "Preserve very small text")
+  .option("--rotate <degrees>", "Rotate all pages by 0, 90, 180, or 270 degrees before processing")
   .option("--password <password>", "Password for encrypted/protected documents")
   .option("--config <file>", "Config file (JSON)")
   .option("-q, --quiet", "Suppress progress output")
@@ -146,6 +149,7 @@ program
         dpi: parseInt(options.dpi || DEFAULT_DPI.toString()),
         preciseBoundingBox: options.preciseBbox !== false,
         preserveVerySmallText: options.preserveSmallText || false,
+        rotate: options.rotate ? parseInt(options.rotate) : undefined,
         password: options.password,
       };
 
@@ -361,6 +365,7 @@ program
   .option("--max-pages <n>", "Max pages to parse per file", DEFAULT_MAX_PAGES.toString())
   .option("--dpi <dpi>", "DPI for rendering", DEFAULT_DPI.toString())
   .option("--no-precise-bbox", "Disable precise bounding boxes")
+  .option("--rotate <degrees>", "Rotate all pages by 0, 90, 180, or 270 degrees before processing")
   .option("--recursive", "Recursively search input directory")
   .option("--extension <ext>", 'Only process files with this extension (e.g., ".pdf")')
   .option(
@@ -430,6 +435,7 @@ program
         maxPages: parseInt(options.maxPages || DEFAULT_MAX_PAGES.toString()),
         dpi: parseInt(options.dpi || DEFAULT_DPI.toString()),
         preciseBoundingBox: options.preciseBbox !== false,
+        rotate: options.rotate ? parseInt(options.rotate) : undefined,
         password: options.password,
       };
 
