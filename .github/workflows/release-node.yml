@@ -103,7 +103,12 @@ jobs:
 
       - name: Build native module
         working-directory: packages/node
-        run: npx napi build --cargo-cwd ../../crates/liteparse-napi --platform --release --js false --dts native.d.ts --target ${{ matrix.target }} .
+        run: |
+          FEATURES_FLAG=""
+          if [ "${{ matrix.use-cross }}" = "true" ]; then
+            FEATURES_FLAG="--no-default-features"
+          fi
+          npx napi build --cargo-cwd ../../crates/liteparse-napi --platform --release --js false --dts native.d.ts --target ${{ matrix.target }} $FEATURES_FLAG .
 
       - name: Copy pdfium dylib (Unix)
         if: runner.os != 'Windows'
