@@ -132,7 +132,6 @@ impl PyParseResult {
             text: result.text.clone(),
         }
     }
-
 }
 
 #[pyclass(frozen, from_py_object)]

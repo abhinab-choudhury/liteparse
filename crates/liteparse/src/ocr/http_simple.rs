@@ -38,19 +38,6 @@ impl HttpOcrEngine {
             server_url,
         }
     }
-
-    async fn _recognize_batch(
-        &self,
-        images: Vec<&[u8]>,
-        options: OcrOptions,
-    ) -> Result<Vec<Vec<OcrResult>>, Box<dyn std::error::Error>> {
-        let mut results: Vec<Vec<OcrResult>> = vec![];
-        for i in images {
-            let result = self.recognize(i, 0, 0, &options).await?;
-            results.push(result);
-        }
-        Ok(results)
-    }
 }
 
 impl OcrEngine for HttpOcrEngine {

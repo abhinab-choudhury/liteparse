@@ -1,15 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-/// Supported output formats for parsed documents.
-/// - `"json"` — Structured JSON with per-page text items, bounding boxes, and metadata.
-/// - `"text"` — Plain text with spatial layout preserved.
-#[derive(Debug, Serialize, Deserialize)]
-pub enum OutputFormat {
-    Json,
-    Text,
-}
-
 /// Accepted input types for input documents.
 /// - `FilePath(String)` — A file path to a local PDF document.
 /// - `Buffer(Vec<u8>)` — A byte buffer containing the PDF data.
@@ -33,7 +24,7 @@ pub enum PdfInput {
 
 /// Represents a single text item extracted from a PDF page,
 /// including its content, position, size, rotation, and font metadata.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Default, Serialize)]
 pub struct TextItem {
     pub text: String,
     /// Viewport-space coordinates (top-left origin, 72 DPI).
@@ -137,33 +128,10 @@ mod tests {
             y: 2.0,
             width: 10.0,
             height: 4.0,
-            rotation: 0.0,
             font_name: Some("Arial".into()),
             font_size: Some(12.0),
-            font_height: None,
-            font_ascent: None,
-            font_descent: None,
-            font_weight: None,
-            font_flags: None,
-            text_width: None,
-            font_is_buggy: false,
-            mcid: None,
-            fill_color: None,
-            stroke_color: None,
-            confidence: None,
+            ..Default::default()
         }
-    }
-
-    #[test]
-    fn output_format_serializes() {
-        assert_eq!(
-            serde_json::to_string(&OutputFormat::Json).unwrap(),
-            "\"Json\""
-        );
-        assert_eq!(
-            serde_json::to_string(&OutputFormat::Text).unwrap(),
-            "\"Text\""
-        );
     }
 
     #[test]

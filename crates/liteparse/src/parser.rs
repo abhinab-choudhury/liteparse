@@ -1,6 +1,7 @@
 use crate::config::{LiteParseConfig, parse_target_pages};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::conversion;
+use crate::error::LiteParseError;
 use crate::extract;
 use crate::ocr::OcrEngine;
 #[cfg(not(target_arch = "wasm32"))]
@@ -52,7 +53,7 @@ impl LiteParse {
     /// Not available on `wasm32` — the browser has no filesystem. Use
     /// [`LiteParse::parse_input`] with [`PdfInput::Bytes`] instead.
     #[cfg(not(target_arch = "wasm32"))]
-    pub async fn parse(&self, input: &str) -> Result<ParseResult, Box<dyn std::error::Error>> {
+    pub async fn parse(&self, input: &str) -> Result<ParseResult, LiteParseError> {
         // Resolve file path to a PdfInput (convert non-PDFs first)
         let pdf_input = if conversion::is_pdf(input) {
             PdfInput::Path(input.to_string())
@@ -69,10 +70,7 @@ impl LiteParse {
     ///
     /// Use `PdfInput::Path` for files on disk or `PdfInput::Bytes` for
     /// in-memory PDF data (e.g. from a network response or Node.js Buffer).
-    pub async fn parse_input(
-        &self,
-        input: PdfInput,
-    ) -> Result<ParseResult, Box<dyn std::error::Error>> {
+    pub async fn parse_input(&self, input: PdfInput) -> Result<ParseResult, LiteParseError> {
         let log = |msg: &str| {
             if !self.config.quiet {
                 eprintln!("{}", msg);
@@ -193,5 +191,4 @@ mod tests {
         assert!(!lp.config().ocr_enabled);
         assert_eq!(lp.config().max_pages, 7);
     }
-
 }

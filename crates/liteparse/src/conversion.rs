@@ -1,3 +1,4 @@
+use crate::error::LiteParseError;
 use std::{
     fmt::{self, Display},
     path::Path,
@@ -34,12 +35,12 @@ pub struct ConversionResult {
     pub original_extension: String,
 }
 
-enum ConverstionTool {
+enum ConversionTool {
     LibreOffice,
     ImageMagick,
 }
 
-impl Display for ConverstionTool {
+impl Display for ConversionTool {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let s = match self {
             Self::ImageMagick => "ImageMagick",
@@ -81,7 +82,7 @@ pub fn is_supported_extension(path: &str) -> bool {
 pub async fn convert_to_pdf(
     path: &str,
     password: Option<&str>,
-) -> Result<ConversionResult, Box<dyn std::error::Error>> {
+) -> Result<ConversionResult, LiteParseError> {
     let ext = Path::new(path)
         .extension()
         .and_then(|e| e.to_str())
@@ -99,19 +100,22 @@ pub async fn convert_to_pdf(
         || PRESENTATION_EXTENSIONS.contains(&ext.as_str())
         || SPREADSHEET_EXTENSIONS.contains(&ext.as_str())
     {
-        ConverstionTool::LibreOffice
+        ConversionTool::LibreOffice
     } else if IMAGE_EXTENSIONS.contains(&ext.as_str()) {
-        ConverstionTool::ImageMagick
+        ConversionTool::ImageMagick
     } else {
-        return Err(format!("unsupported file format: .{}", ext).into());
+        return Err(LiteParseError::Conversion(format!(
+            "unsupported file format: .{}",
+            ext
+        )));
     };
 
     let tmp_dir = tempfile::Builder::new().prefix("liteparse-").tempdir()?;
     let pdf_path = match tool {
-        ConverstionTool::ImageMagick => {
+        ConversionTool::ImageMagick => {
             convert_image_to_pdf(path, tmp_dir.path().to_str().unwrap()).await?
         }
-        ConverstionTool::LibreOffice => {
+        ConversionTool::LibreOffice => {
             convert_office_document(path, tmp_dir.path().to_str().unwrap(), password).await?
         }
     };
@@ -127,7 +131,7 @@ pub async fn execute_command(
     command: &str,
     args: Vec<&str>,
     timeout_ms: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String, LiteParseError> {
     let proc = tokio::process::Command::new(command)
         .args(args)
         .stdin(std::process::Stdio::null())
@@ -147,19 +151,20 @@ pub async fn execute_command(
             if output.status.success() {
                 Ok(stdout)
             } else {
-                Err(anyhow::anyhow!("Command failed: {stderr}").into())
+                Err(LiteParseError::Conversion(format!(
+                    "Command failed: {stderr}"
+                )))
             }
         }
-        Ok(Err(e)) => Err(anyhow::anyhow!("Command error: {e}").into()),
-        Err(_) => Err(anyhow::anyhow!("Command timed out after {timeout_ms}ms").into()),
+        Ok(Err(e)) => Err(LiteParseError::Conversion(format!("Command error: {e}"))),
+        Err(_) => Err(LiteParseError::Conversion(format!(
+            "Command timed out after {timeout_ms}ms"
+        ))),
     }
 }
 
 /// Execute a command for PowerShel
-pub async fn execute_powershell(
-    command: &str,
-    timeout_ms: u64,
-) -> Result<String, Box<dyn std::error::Error>> {
+pub async fn execute_powershell(command: &str, timeout_ms: u64) -> Result<String, LiteParseError> {
     execute_command(
         "powershell",
         vec!["-NoProfile", "-Command", command],
@@ -327,12 +332,12 @@ pub async fn convert_office_document(
     file_path: &str,
     output_dir: &str,
     password: Option<&str>,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String, LiteParseError> {
     let libre_office_cmd = find_libre_office_command().await.ok_or_else(|| {
-        anyhow::anyhow!(
+        LiteParseError::Conversion(
             "LibreOffice is not installed. Please install LibreOffice to convert office documents. \
              On macOS: brew install --cask libreoffice, On Ubuntu: apt-get install libreoffice, \
-             On Windows: choco install libreoffice-fresh"
+             On Windows: choco install libreoffice-fresh".into()
         )
     })?;
 
@@ -356,7 +361,7 @@ pub async fn convert_office_document(
     let base_name = Path::new(file_path)
         .file_stem()
         .and_then(|s| s.to_str())
-        .ok_or_else(|| anyhow::anyhow!("invalid file path: {file_path}"))?;
+        .ok_or_else(|| LiteParseError::Conversion(format!("invalid file path: {file_path}")))?;
     let pdf_path = Path::new(output_dir)
         .join(format!("{base_name}.pdf"))
         .to_string_lossy()
@@ -365,7 +370,9 @@ pub async fn convert_office_document(
     if tokio::fs::metadata(&pdf_path).await.is_ok() {
         Ok(pdf_path)
     } else {
-        Err(anyhow::anyhow!("LibreOffice conversion succeeded but output PDF not found").into())
+        Err(LiteParseError::Conversion(
+            "LibreOffice conversion succeeded but output PDF not found".into(),
+        ))
     }
 }
 
@@ -373,12 +380,13 @@ pub async fn convert_office_document(
 pub async fn convert_image_to_pdf(
     file_path: &str,
     output_dir: &str,
-) -> Result<String, Box<dyn std::error::Error>> {
+) -> Result<String, LiteParseError> {
     let image_magick = find_image_magick_command().await.ok_or_else(|| {
-        anyhow::anyhow!(
+        LiteParseError::Conversion(
             "ImageMagick is not installed. Please install ImageMagick to convert images. \
              On macOS: brew install imagemagick, On Ubuntu: apt-get install imagemagick, \
              On Windows: choco install imagemagick.app"
+                .into(),
         )
     })?;
 
@@ -393,20 +401,19 @@ pub async fn convert_image_to_pdf(
         let has_ghostscript =
             is_command_available("gs").await || is_command_available_windows("gs").await;
         if !has_ghostscript {
-            return Err(anyhow::anyhow!(
+            return Err(LiteParseError::Conversion(format!(
                 "Ghostscript is required to convert {} files but is not installed. \
                  On macOS: brew install ghostscript, On Ubuntu: apt-get install ghostscript, \
                  On Windows: choco install ghostscript",
                 ext.to_uppercase()
-            )
-            .into());
+            )));
         }
     }
 
     let base_name = Path::new(file_path)
         .file_stem()
         .and_then(|s| s.to_str())
-        .ok_or_else(|| anyhow::anyhow!("invalid file path: {file_path}"))?;
+        .ok_or_else(|| LiteParseError::Conversion(format!("invalid file path: {file_path}")))?;
     let pdf_path = Path::new(output_dir)
         .join(format!("{base_name}.pdf"))
         .to_string_lossy()
@@ -425,21 +432,19 @@ pub async fn convert_image_to_pdf(
         Err(error) => {
             let error_msg = error.to_string();
             if error_msg.contains("gs") && error_msg.contains("command not found") {
-                return Err(anyhow::anyhow!(
+                return Err(LiteParseError::Conversion(format!(
                     "Ghostscript is required to convert {} files but is not installed. \
                      On macOS: brew install ghostscript, On Ubuntu: apt-get install ghostscript, \
                      On Windows: choco install ghostscript",
                     ext.to_uppercase()
-                )
-                .into());
+                )));
             }
             if error_msg.contains("FailedToExecuteCommand") && error_msg.contains("gs") {
-                return Err(anyhow::anyhow!(
+                return Err(LiteParseError::Conversion(format!(
                     "Ghostscript failed during {} conversion. \
                      Ensure Ghostscript is properly installed: brew install ghostscript",
                     ext.to_uppercase()
-                )
-                .into());
+                )));
             }
             Err(error)
         }
@@ -447,18 +452,13 @@ pub async fn convert_image_to_pdf(
 }
 
 pub fn guess_extension_from_data(data: &[u8]) -> Option<String> {
-    let kind = infer::get(data);
-    let ext = kind.map(|k| k.extension());
-    if let Some(e) = ext {
-        return Some(e.to_string());
-    }
-    None
+    infer::get(data).map(|k| k.extension().to_string())
 }
 
 pub async fn convert_data_to_pdf(
     data: Vec<u8>,
     password: Option<&str>,
-) -> Result<ConversionResult, Box<dyn std::error::Error>> {
+) -> Result<ConversionResult, LiteParseError> {
     let ext = guess_extension_from_data(&data);
     let tmp_dir = tempfile::Builder::new().prefix("liteparse-").tempdir()?;
     let tmp_path = tmp_dir
@@ -496,8 +496,8 @@ mod tests {
 
     #[test]
     fn test_conversion_tool_display() {
-        assert_eq!(ConverstionTool::ImageMagick.to_string(), "ImageMagick");
-        assert_eq!(ConverstionTool::LibreOffice.to_string(), "LibreOffice");
+        assert_eq!(ConversionTool::ImageMagick.to_string(), "ImageMagick");
+        assert_eq!(ConversionTool::LibreOffice.to_string(), "LibreOffice");
     }
 
     #[test]

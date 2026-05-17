@@ -1,3 +1,4 @@
+use crate::error::LiteParseError;
 use crate::ocr::{OcrEngine, OcrOptions};
 use crate::types::{Page, PdfInput, TextItem};
 use image::{ImageBuffer, Rgba};
@@ -13,7 +14,7 @@ pub async fn ocr_and_merge_pages(
     dpi: f32,
     ocr_engine: &dyn OcrEngine,
     ocr_language: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), LiteParseError> {
     ocr_and_merge_pages_from_input(
         pages,
         &PdfInput::Path(pdf_path.to_string()),
@@ -32,7 +33,7 @@ pub async fn ocr_and_merge_pages_from_input(
     dpi: f32,
     ocr_engine: &dyn OcrEngine,
     ocr_language: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), LiteParseError> {
     // Phase 1: render all pages that need OCR. The pdfium `Document` holds raw
     // pointers that are not `Send`, so we must not hold it across an `.await`.
     // Render synchronously into owned buffers and drop the document before
@@ -72,7 +73,9 @@ pub async fn ocr_and_merge_pages_from_input(
             let rgba = bitmap.to_rgba();
 
             let img: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, rgba)
-                .ok_or("failed to create image buffer")?;
+                .ok_or(LiteParseError::Other(
+                    "failed to create image buffer".into(),
+                ))?;
             let rgb_img = image::DynamicImage::ImageRgba8(img).to_rgb8();
             let rgb_bytes = rgb_img.into_raw();
 
@@ -147,20 +150,10 @@ pub async fn ocr_and_merge_pages_from_input(
                 y: ocr_y,
                 width: ocr_w,
                 height: ocr_h,
-                rotation: 0.0,
                 font_name: Some("OCR".to_string()),
                 font_size: Some(ocr_h),
-                font_height: None,
-                font_ascent: None,
-                font_descent: None,
-                font_weight: None,
-                font_flags: None,
-                text_width: None,
-                font_is_buggy: false,
-                mcid: None,
-                fill_color: None,
-                stroke_color: None,
                 confidence: Some((r.confidence * 1000.0).round() / 1000.0),
+                ..Default::default()
             });
             added += 1;
         }
@@ -256,20 +249,7 @@ mod tests {
             y,
             width: w,
             height: h,
-            rotation: 0.0,
-            font_name: None,
-            font_size: None,
-            font_height: None,
-            font_ascent: None,
-            font_descent: None,
-            font_weight: None,
-            font_flags: None,
-            text_width: None,
-            font_is_buggy: false,
-            mcid: None,
-            fill_color: None,
-            stroke_color: None,
-            confidence: None,
+            ..Default::default()
         }
     }
 

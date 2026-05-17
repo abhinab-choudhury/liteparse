@@ -186,5 +186,4 @@ impl JsParseResult {
             text: result.text.clone(),
         }
     }
-
 }

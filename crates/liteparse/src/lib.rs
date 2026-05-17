@@ -1,6 +1,7 @@
 pub mod config;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod conversion;
+pub mod error;
 pub mod extract;
 pub mod ocr;
 pub mod ocr_merge;

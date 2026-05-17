@@ -1,3 +1,4 @@
+use crate::error::LiteParseError;
 use image::{ImageBuffer, Rgba};
 use pdfium::Library;
 use serde::Serialize;
@@ -8,7 +9,7 @@ pub fn screenshot(
     page_num: u32,
     dpi: f32,
     output_path: &str,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), LiteParseError> {
     let lib = Library::init();
     let document = lib.load_document(pdf_path, None)?;
     let page = document.page((page_num - 1) as i32)?;
@@ -18,8 +19,9 @@ pub fn screenshot(
     let height = bitmap.height() as u32;
     let rgba = bitmap.to_rgba();
 
-    let img: ImageBuffer<Rgba<u8>, Vec<u8>> =
-        ImageBuffer::from_raw(width, height, rgba).ok_or("failed to create image buffer")?;
+    let img: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_raw(width, height, rgba).ok_or(
+        LiteParseError::Other("failed to create image buffer".into()),
+    )?;
 
     img.save(output_path)?;
     eprintln!(
@@ -31,11 +33,7 @@ pub fn screenshot(
 }
 
 /// Render a single page and write raw PNG bytes to stdout.
-pub fn screenshot_to_stdout(
-    pdf_path: &str,
-    page_num: u32,
-    dpi: f32,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn screenshot_to_stdout(pdf_path: &str, page_num: u32, dpi: f32) -> Result<(), LiteParseError> {
     let lib = Library::init();
     let document = lib.load_document(pdf_path, None)?;
     let page = document.page((page_num - 1) as i32)?;
@@ -61,10 +59,7 @@ struct ImageBoundsOutput {
 }
 
 /// Extract image bounding boxes and print as JSON to stdout.
-pub fn image_bounds(
-    pdf_path: &str,
-    page_num: Option<u32>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub fn image_bounds(pdf_path: &str, page_num: Option<u32>) -> Result<(), LiteParseError> {
     let lib = Library::init();
     let document = lib.load_document(pdf_path, None)?;
     let page_count = document.page_count();

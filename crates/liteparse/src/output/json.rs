@@ -77,20 +77,10 @@ mod tests {
             y: 2.0,
             width: 3.0,
             height: 4.0,
-            rotation: 0.0,
             font_name: Some("Helv".into()),
             font_size: Some(10.0),
-            font_height: None,
-            font_ascent: None,
-            font_descent: None,
-            font_weight: None,
-            font_flags: None,
-            text_width: None,
-            font_is_buggy: false,
-            mcid: None,
-            fill_color: None,
-            stroke_color: None,
             confidence: conf,
+            ..Default::default()
         }
     }
 

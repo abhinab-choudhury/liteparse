@@ -1,3 +1,4 @@
+use crate::error::LiteParseError;
 use crate::types::{Page as LitePage, PdfInput, TextItem};
 use pdfium::{Font, FontType, Library, Page, RectF, TextPage};
 
@@ -5,38 +6,14 @@ use pdfium::{Font, FontType, Library, Page, RectF, TextPage};
 pub fn extract_pages(
     pdf_path: &str,
     page_num: Option<u32>,
-) -> Result<Vec<LitePage>, Box<dyn std::error::Error>> {
-    let lib = Library::init();
-    let document = lib.load_document(pdf_path, None)?;
-    let page_count = document.page_count();
-    let mut pages = Vec::new();
-
-    for page_index in 0..page_count {
-        if let Some(target_page) = page_num
-            && page_index as u32 + 1 != target_page
-        {
-            continue;
-        }
-
-        let page = document.page(page_index)?;
-        let text_page = page.text()?;
-        let view_box = page.view_box().unwrap_or(RectF {
-            left: 0.0,
-            top: page.height(),
-            right: page.width(),
-            bottom: 0.0,
-        });
-        let text_items = extract_page_text_items(&page, &text_page, &view_box)?;
-
-        pages.push(LitePage {
-            page_number: (page_index + 1) as usize,
-            page_width: page.width(),
-            page_height: page.height(),
-            text_items,
-        });
-    }
-
-    Ok(pages)
+) -> Result<Vec<LitePage>, LiteParseError> {
+    let target_pages: Option<Vec<u32>> = page_num.map(|p| vec![p]);
+    extract_pages_from_input(
+        &PdfInput::Path(pdf_path.to_string()),
+        target_pages.as_deref(),
+        usize::MAX,
+        None,
+    )
 }
 
 /// Extract pages with filtering by target page list and max pages, with optional password.
@@ -45,58 +22,22 @@ pub fn extract_pages_filtered(
     target_pages: Option<&[u32]>,
     max_pages: usize,
     password: Option<&str>,
-) -> Result<Vec<LitePage>, Box<dyn std::error::Error>> {
-    let lib = Library::init();
-    let document = lib.load_document(pdf_path, password)?;
-    let page_count = document.page_count();
-    let mut pages = Vec::new();
-
-    for page_index in 0..page_count {
-        let page_number = page_index as u32 + 1;
-
-        if let Some(targets) = target_pages
-            && !targets.contains(&page_number)
-        {
-            continue;
-        }
-
-        if pages.len() >= max_pages {
-            break;
-        }
-
-        let page = document.page(page_index)?;
-        let text_page = page.text()?;
-        let view_box = page.view_box().unwrap_or(RectF {
-            left: 0.0,
-            top: page.height(),
-            right: page.width(),
-            bottom: 0.0,
-        });
-        let text_items = extract_page_text_items(&page, &text_page, &view_box)?;
-
-        pages.push(LitePage {
-            page_number: page_number as usize,
-            page_width: page.width(),
-            page_height: page.height(),
-            text_items,
-        });
-    }
-
-    Ok(pages)
+) -> Result<Vec<LitePage>, LiteParseError> {
+    extract_pages_from_input(
+        &PdfInput::Path(pdf_path.to_string()),
+        target_pages,
+        max_pages,
+        password,
+    )
 }
 
 /// Extract pages from a `PdfInput` (file path or bytes) with filtering.
-///
-/// Returns `(pages, pdf_data)` where `pdf_data` is the owned byte buffer when
-/// input was `PdfInput::Bytes`. The caller should keep `pdf_data` alive as long
-/// as any pdfium objects derived from it are in use. This is needed because
-/// pdfium's memory-loaded documents require the buffer to outlive the document.
 pub fn extract_pages_from_input(
     input: &PdfInput,
     target_pages: Option<&[u32]>,
     max_pages: usize,
     password: Option<&str>,
-) -> Result<Vec<LitePage>, Box<dyn std::error::Error>> {
+) -> Result<Vec<LitePage>, LiteParseError> {
     let lib = Library::init();
     let document = match input {
         PdfInput::Path(path) => lib.load_document(path, password)?,
@@ -140,7 +81,7 @@ pub fn extract_pages_from_input(
 }
 
 /// Extract raw text items and print each page as a JSON-line object to stdout.
-pub fn extract(pdf_path: &str, page_num: Option<u32>) -> Result<(), Box<dyn std::error::Error>> {
+pub fn extract(pdf_path: &str, page_num: Option<u32>) -> Result<(), LiteParseError> {
     let pages = extract_pages(pdf_path, page_num)?;
     for page in &pages {
         println!("{}", serde_json::to_string(page)?);
@@ -216,7 +157,7 @@ fn extract_page_text_items(
     page: &Page,
     text_page: &TextPage,
     view_box: &RectF,
-) -> Result<Vec<TextItem>, Box<dyn std::error::Error>> {
+) -> Result<Vec<TextItem>, LiteParseError> {
     let char_count = text_page.char_count();
     if char_count <= 0 {
         return Ok(Vec::new());
@@ -772,32 +713,7 @@ impl SegmentBuilder {
             });
         }
 
-        // Reset
-        self.text.clear();
-        self.vp_left = f32::MAX;
-        self.vp_right = f32::MIN;
-        self.vp_top = f32::MAX;
-        self.vp_bottom = f32::MIN;
-        self.last_char_right = f32::MIN;
-        self.last_char_bottom = f32::MIN;
-        self.char_count = 0;
-        self.font_name = None;
-        self.font_size = 0.0;
-        self.font_height = None;
-        self.font_ascent = None;
-        self.font_descent = None;
-        self.font_weight = None;
-        self.font_flags = None;
-        self.font_is_buggy = false;
-        self.font_is_embedded = false;
-        self.font = None;
-        self.rotation_deg = 0.0;
-        self.text_width = 0.0;
-        self.mcid = None;
-        self.fill_color = None;
-        self.stroke_color = None;
-        self.has_content = false;
-        self.pending_space = false;
+        *self = Self::new();
     }
 }
 
@@ -813,20 +729,7 @@ mod tests {
             y,
             width: w,
             height: h,
-            rotation: 0.0,
-            font_name: None,
-            font_size: None,
-            font_height: None,
-            font_ascent: None,
-            font_descent: None,
-            font_weight: None,
-            font_flags: None,
-            text_width: None,
-            font_is_buggy: false,
-            mcid: None,
-            fill_color: None,
-            stroke_color: None,
-            confidence: None,
+            ..Default::default()
         }
     }
 

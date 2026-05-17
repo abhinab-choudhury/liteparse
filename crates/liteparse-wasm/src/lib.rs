@@ -330,5 +330,4 @@ impl LiteParse {
         serde_wasm_bindgen::to_value(&js_result)
             .map_err(|e| JsError::new(&format!("serialize result failed: {}", e)))
     }
-
 }

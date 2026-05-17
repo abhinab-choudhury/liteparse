@@ -1196,7 +1196,6 @@ checksum = "92daf443525c4cce67b150400bc2316076100ce0b3686209eb8cf3c31612e6f0"
 name = "liteparse"
 version = "2.0.0"
 dependencies = [
- "anyhow",
  "clap",
  "image",
  "infer",
@@ -1207,6 +1206,7 @@ dependencies = [
  "serde_json",
  "tempfile",
  "tesseract-rs",
+ "thiserror 2.0.18",
  "tokio",
  "web-time",
 ]

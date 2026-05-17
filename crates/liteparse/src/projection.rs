@@ -86,13 +86,7 @@ fn compute_median_textbox_size(items: &[ProjectedTextItem]) -> (f32, f32) {
 }
 
 fn canonical_rotation(rotation: f32) -> i32 {
-    let mut r = rotation;
-    while r < 0.0 {
-        r += 360.0;
-    }
-    while r >= 360.0 {
-        r -= 360.0;
-    }
+    let r = rotation.rem_euclid(360.0);
 
     let candidates = [0.0f32, 90.0, 180.0, 270.0];
     let mut best = 0.0f32;
