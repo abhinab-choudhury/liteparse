@@ -1,6 +1,7 @@
 use crate::config::{LiteParseConfig, parse_target_pages};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::conversion;
+use crate::conversion::convert_data_to_pdf;
 use crate::error::LiteParseError;
 use crate::extract;
 use crate::ocr::OcrEngine;
@@ -55,11 +56,13 @@ impl LiteParse {
     #[cfg(not(target_arch = "wasm32"))]
     pub async fn parse(&self, input: &str) -> Result<ParseResult, LiteParseError> {
         // Resolve file path to a PdfInput (convert non-PDFs first)
+        let _tmp_dir;
         let pdf_input = if conversion::is_pdf(input) {
             PdfInput::Path(input.to_string())
         } else {
-            let converted =
-                conversion::convert_to_pdf(input, self.config.password.as_deref()).await?;
+            let (converted, tmp_dir) =
+                conversion::convert_to_pdf(input, self.config.password.as_deref(), false).await?;
+            _tmp_dir = tmp_dir;
             PdfInput::Path(converted.pdf_path)
         };
 
@@ -79,6 +82,18 @@ impl LiteParse {
 
         let t0 = web_time::Instant::now();
 
+        let _tmp_dir;
+
+        let validated_input = match input {
+            PdfInput::Path(p) => PdfInput::Path(p),
+            PdfInput::Bytes(b) => {
+                let (converted, tmp_dir) =
+                    convert_data_to_pdf(b, self.config.password.as_deref()).await?;
+                _tmp_dir = tmp_dir;
+                PdfInput::Path(converted.pdf_path)
+            }
+        };
+
         // Determine which pages to extract
         let target_pages = self
             .config
@@ -90,7 +105,7 @@ impl LiteParse {
 
         // Extract text items from PDF pages
         let mut pages = extract::extract_pages_from_input(
-            &input,
+            &validated_input,
             target_pages.as_deref(),
             self.config.max_pages,
             self.config.password.as_deref(),
@@ -135,7 +150,7 @@ impl LiteParse {
             };
             ocr_merge::ocr_and_merge_pages_from_input(
                 &mut pages,
-                &input,
+                &validated_input,
                 self.config.dpi,
                 engine,
                 &self.config.ocr_language,
