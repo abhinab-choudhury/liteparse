@@ -244,9 +244,9 @@ jobs:
       - name: Build
         run: |
           if [ "${{ matrix.use-cross }}" = "true" ]; then
-            cargo build --release --target ${{ matrix.target }} --no-default-features
+            cargo build --release --target ${{ matrix.target }} --no-default-features -p liteparse
           else
-            cargo build --release --target ${{ matrix.target }}
+            cargo build --release --target ${{ matrix.target }} -p liteparse
           fi
 
       - name: Package binary
